@@ -31,6 +31,8 @@ spec:
       labels:
         app: moodle
     spec:
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: moodle
           image: ghcr.io/cybe-asia/digital-school-moodle:latest
