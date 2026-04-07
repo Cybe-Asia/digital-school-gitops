@@ -16,7 +16,7 @@ images:
   newTag: dev-fa77b1c
 - name: ghcr.io/cybe-asia/auth-services
   newName: ghcr.io/cybe-asia/auth-services
-  newTag: dev-b268f59
+  newTag: dev-28eedfa
 - name: ghcr.io/cybe-asia/notification-services
   newName: ghcr.io/cybe-asia/notification-services
   newTag: dev-488a8fd
