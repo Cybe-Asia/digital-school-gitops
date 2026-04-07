@@ -45,6 +45,9 @@ spec:
             - mountPath: /var/www/html/config.php
               name: moodle-config
               subPath: config.php
+            - mountPath: /etc/apache2/sites-available/000-default.conf
+              name: apache-vhost
+              subPath: 000-default.conf
       volumes:
         - name: moodledata
           persistentVolumeClaim:
@@ -52,6 +55,9 @@ spec:
         - name: moodle-config
           configMap:
             name: moodle-config
+        - name: apache-vhost
+          configMap:
+            name: moodle-apache-vhost
 ---
 apiVersion: v1
 kind: Service
@@ -65,6 +71,27 @@ spec:
     - port: 80
       targetPort: 80
   type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: moodle-apache-vhost
+  namespace: moodle
+data:
+  000-default.conf: |
+    <VirtualHost *:80>
+        ServerAdmin webmaster@localhost
+        DocumentRoot /var/www/html/public
+
+        <Directory /var/www/html/public>
+            Options FollowSymLinks
+            AllowOverride All
+            Require all granted
+        </Directory>
+
+        ErrorLog ${APACHE_LOG_DIR}/error.log
+        CustomLog ${APACHE_LOG_DIR}/access.log combined
+    </VirtualHost>
 ---
 apiVersion: v1
 kind: ConfigMap
