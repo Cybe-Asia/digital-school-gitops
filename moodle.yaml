@@ -92,7 +92,17 @@ data:
       'dbcollation' => 'utf8mb4_unicode_ci',
     );
 
-    $CFG->wwwroot   = 'http://moodle.local';
+    if (isset($_SERVER['HTTP_HOST'])) {
+        $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http";
+        // Also respect HTTP_X_FORWARDED_PROTO if behind proxy/ingress
+        if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+            $protocol = 'https';
+        }
+        $CFG->wwwroot = $protocol . '://' . $_SERVER['HTTP_HOST'];
+    } else {
+        $CFG->wwwroot = 'http://moodle.local';
+    }
+    
     $CFG->dataroot  = '/var/moodledata';
     $CFG->admin     = 'admin';
     $CFG->directorypermissions = 0777;
