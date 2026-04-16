@@ -63,6 +63,15 @@ patches:
   target:
     kind: Service
     name: frontend
+- patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: API_GATEWAY_URL
+        value: "http://traefik.kube-system.svc.cluster.local"
+  target:
+    kind: Deployment
+    name: frontend
 
 images:
 - name: ghcr.io/cybe-asia/admission-services
