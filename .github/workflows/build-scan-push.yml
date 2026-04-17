@@ -110,7 +110,7 @@ jobs:
             "${{ inputs.context }}"
 
       - name: Trivy vulnerability scan (L4-S2)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ steps.vars.outputs.image_ref }}
           format: table
