@@ -3,3 +3,5 @@ kind: Kustomization
 resources:
   - service.yaml
   - statefulset.yaml
+  - backup-rbac.yaml
+  - backup-cronjob.yaml
