@@ -26,6 +26,14 @@ spec:
           value: 512m
         - name: NEO4J_server_config_strict__validation_enabled
           value: "false"
+        - name: NEO4J_PLUGINS
+          value: '["apoc"]'
+        - name: NEO4J_dbms_security_procedures_unrestricted
+          value: "apoc.*"
+        - name: NEO4J_apoc_export_file_enabled
+          value: "true"
+        - name: NEO4J_apoc_import_file_enabled
+          value: "true"
         image: neo4j:5.15
         imagePullPolicy: IfNotPresent
         name: neo4j
@@ -37,8 +45,8 @@ spec:
           name: bolt
           protocol: TCP
         readinessProbe:
-          failureThreshold: 3
-          initialDelaySeconds: 20
+          failureThreshold: 6
+          initialDelaySeconds: 45
           periodSeconds: 10
           successThreshold: 1
           tcpSocket:
@@ -54,6 +62,8 @@ spec:
         volumeMounts:
         - mountPath: /data
           name: neo4j-data
+        - mountPath: /backups
+          name: neo4j-backups
   volumeClaimTemplates:
   - apiVersion: v1
     kind: PersistentVolumeClaim
@@ -65,5 +75,17 @@ spec:
       resources:
         requests:
           storage: 5Gi
+      storageClassName: local-path
+      volumeMode: Filesystem
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: neo4j-backups
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
       storageClassName: local-path
       volumeMode: Filesystem

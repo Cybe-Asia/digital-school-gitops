@@ -1,0 +1,50 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: neo4j-backup
+spec:
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      ttlSecondsAfterFinished: 86400
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: neo4j-backup
+          containers:
+            - name: backup
+              image: bitnami/kubectl:1.29
+              command: ["sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  TS=$(date -u +%Y%m%d-%H%M%S)
+                  BACKUP_FILE="/backups/neo4j-${TS}.cypher"
+                  echo "[${TS}] starting Neo4j backup -> ${BACKUP_FILE}"
+
+                  # Read the password from the neo4j-secret (NEO4J_AUTH format: neo4j/<password>)
+                  PASS=$(kubectl get secret neo4j-secret -o jsonpath='{.data.NEO4J_AUTH}' | base64 -d | cut -d/ -f2)
+
+                  kubectl exec neo4j-0 -- sh -c "
+                    cypher-shell -a bolt://localhost:7687 -u neo4j -p '${PASS}' \\
+                      'CALL apoc.export.cypher.all(\"${BACKUP_FILE}\", {format:\"plain\", useOptimizations:{type:\"UNWIND_BATCH\", unwindBatchSize: 100}})'
+                  "
+
+                  echo "[${TS}] backup complete"
+
+                  echo "retention: deleting backups older than 7 days"
+                  kubectl exec neo4j-0 -- sh -c "find /backups -type f -name 'neo4j-*.cypher' -mtime +7 -delete -print" || true
+
+                  echo "current backups:"
+                  kubectl exec neo4j-0 -- sh -c "ls -lh /backups/" || true
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
