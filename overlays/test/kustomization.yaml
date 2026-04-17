@@ -15,7 +15,8 @@ resources:
 - ingress.yaml
 - resource-quota.yaml
 - app-config.yaml
-- app-secrets.yaml
+- app-secrets-sealed.yaml
+- neo4j-secret-sealed.yaml
 
 patches:
 - patch: |-
