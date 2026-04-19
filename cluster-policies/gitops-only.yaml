@@ -24,14 +24,25 @@ spec:
   failurePolicy: Fail
   matchConstraints:
     resourceRules:
+      # Top-level workload kinds that humans can author directly.
+      # Intentionally NOT covered here:
+      #   - replicasets (Deployment controller creates them)
+      #   - jobs       (CronJob controller creates them; also Argo
+      #                 PostSync hooks create one-shot Jobs)
+      #   - persistentvolumeclaims (StatefulSet volumeClaimTemplates)
+      #   - pods       (ReplicaSet/StatefulSet/Job create them)
+      # Those child resources are owned by built-in controllers whose
+      # SAs are not — and should not be — in the allow list. Covering
+      # them here would make the Deployment/CronJob controllers
+      # themselves fail every reconcile.
       - apiGroups: ["apps"]
         apiVersions: ["v1"]
         operations: ["CREATE", "UPDATE", "DELETE"]
-        resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+        resources: ["deployments", "statefulsets", "daemonsets"]
       - apiGroups: [""]
         apiVersions: ["v1"]
         operations: ["CREATE", "UPDATE", "DELETE"]
-        resources: ["services", "configmaps", "persistentvolumeclaims"]
+        resources: ["services", "configmaps"]
       - apiGroups: ["networking.k8s.io"]
         apiVersions: ["v1"]
         operations: ["CREATE", "UPDATE", "DELETE"]
@@ -39,7 +50,7 @@ spec:
       - apiGroups: ["batch"]
         apiVersions: ["v1"]
         operations: ["CREATE", "UPDATE", "DELETE"]
-        resources: ["jobs", "cronjobs"]
+        resources: ["cronjobs"]
       - apiGroups: ["bitnami.com"]
         apiVersions: ["v1alpha1"]
         operations: ["CREATE", "UPDATE", "DELETE"]
