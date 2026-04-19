@@ -54,6 +54,10 @@ spec:
       kind: ServiceAccount
     - group: ""
       kind: PersistentVolumeClaim
+    - group: ""
+      kind: LimitRange
+    - group: ""
+      kind: ResourceQuota
     - group: apps
       kind: Deployment
     - group: apps
