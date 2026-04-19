@@ -1,0 +1,65 @@
+# L1-S3: Ingress isolation baseline for every school-* namespace.
+#
+# Model: deny-ingress by default, then explicitly allow:
+#   - same-namespace pod-to-pod traffic (so backends can reach Neo4j)
+#   - Traefik ingress controller (routing user traffic in)
+#
+# Egress is NOT restricted. Pods can still:
+#   - resolve DNS via CoreDNS
+#   - call external APIs (Google OAuth, SMTP)
+#   - let kubelet pull images (kubelet bypasses pod NetworkPolicy anyway)
+#
+# Effect vs doc Arch §9/L1-S3:
+#   school-dev pods cannot receive traffic from bi-* or skillz-* pods.
+#   school-test cannot receive traffic from school-dev, and vice versa.
+#   "No cross-domain contamination" enforced at L3/L4.
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+spec:
+  # Empty podSelector = all pods in the namespace become 'isolated' for
+  # the listed policyTypes. Without a matching allow rule, traffic is
+  # dropped.
+  podSelector: {}
+  policyTypes:
+    - Ingress
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Empty podSelector inside a from rule matches every pod in
+        # *this* namespace. Combined with the default-deny above, this
+        # reopens intra-namespace traffic only.
+        - podSelector: {}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-traefik
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # namespaceSelector + podSelector on the same list item are
+        # AND-combined: the source must be a Traefik pod (by label) AND
+        # in the kube-system namespace.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
