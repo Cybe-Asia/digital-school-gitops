@@ -60,6 +60,8 @@ spec:
         request.userInfo.username == 'system:serviceaccount:platform-system:argocd-application-controller' ||
         request.userInfo.username == 'system:serviceaccount:platform-system:argocd-server' ||
         request.userInfo.username == 'system:serviceaccount:kube-system:sealed-secrets-controller' ||
+        request.userInfo.username == 'system:kube-controller-manager' ||
+        request.userInfo.username.startsWith('system:serviceaccount:kube-system:') ||
         ('system:masters' in request.userInfo.groups)
       messageExpression: |
         'Direct ' + request.operation + ' on ' + request.resource.resource +
