@@ -11,8 +11,8 @@ CI Workflow Template), L7 (Env Repo Enforcement).
 ```
  service repo push                   digital-school-gitops
  ───────────────────                 ────────────────────
-   dev branch       ──build+scan+SBOM+push── overlays/dev  (auto-PR)
-   release-*        ──build+scan+SBOM+push── overlays/staging (auto-PR)
+   dev branch       ──build+scan+SBOM+push── lab/dev  (auto-PR)
+   release-*        ──build+scan+SBOM+push── lab/staging (auto-PR)
    main             ──build+scan+SBOM+push── overlays/production (auto-PR)
 ```
 
@@ -20,9 +20,9 @@ Argo CD syncs the matching namespace whenever the overlay file
 changes. Rollback = revert the overlay commit; Argo re-syncs to the
 previous image.
 
-`overlays/test` is **not** auto-updated by CI. Promotion from dev to
+`lab/test` is **not** auto-updated by CI. Promotion from dev to
 test is a manual PR — copy the image tag line from
-`overlays/dev/kustomization.yaml` into `overlays/test/kustomization.yaml`.
+`lab/dev/kustomization.yaml` into `lab/test/kustomization.yaml`.
 Same digest, no rebuild — satisfies L8 "Staging image digest equals
 test digest".
 
@@ -94,7 +94,7 @@ jobs:
 ## Known gaps (tracked)
 
 - **`release-*` / `main` overlays not yet used** — the workflow will
-  auto-bump `overlays/staging` / `overlays/production` when those
+  auto-bump `lab/staging` / `overlays/production` when those
   branches are pushed, but the doctrinal model (L8) is that staging
   and production use the *same digest* as test, promoted via manual
   PR. The current behavior is a legacy-compatible stopgap. Remove the

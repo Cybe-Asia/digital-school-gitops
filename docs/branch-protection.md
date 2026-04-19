@@ -46,7 +46,7 @@ gh api -X PUT \
 
 - **Direct pushes to `dev`** are blocked; all merges go through PRs.
 - **Code Owner review required** — any PR touching
-  `overlays/staging/*` or `overlays/production/*` cannot merge without
+  `lab/staging/*` or `overlays/production/*` cannot merge without
   the owner listed in `.github/CODEOWNERS` approving.
 - **Stale reviews dismissed** on new pushes — approving a PR and then
   editing it invalidates the approval.
@@ -68,7 +68,7 @@ true`.
 - Once GitHub Actions CI runs on PRs (L4-S2 Trivy, L5-S1 reusable
   workflow), register those workflow names in `required_status_checks`
   so failing builds block merges.
-- Add a second reviewer on `overlays/staging/*` and
+- Add a second reviewer on `lab/staging/*` and
   `overlays/production/*` once the team grows — CODEOWNERS supports
   multiple handles space-separated.
 - Consider protecting `main` as well (currently inactive but should

@@ -8,7 +8,7 @@ name: build-scan-push
 #   L4-S2 Trivy scan gating (fail on CRITICAL)
 #   L4-S3 SBOM artifact retained per build
 #   L5-S1 single shared template across services
-#   L7-S1 env repo enforcement (auto-PR to overlays/dev; manual PR to
+#   L7-S1 env repo enforcement (auto-PR to lab/dev; manual PR to
 #         higher envs preserves doc's dev -> test -> staging promotion)
 #
 # Services call this via `uses: Cybe-Asia/digital-school-gitops/.github/workflows/build-scan-push.yml@dev`.
@@ -38,11 +38,11 @@ on:
       overlay_on_dev:
         required: false
         type: string
-        default: "overlays/dev"
+        default: "lab/dev"
       overlay_on_release:
         required: false
         type: string
-        default: "overlays/staging"
+        default: "lab/staging"
       overlay_on_main:
         required: false
         type: string
