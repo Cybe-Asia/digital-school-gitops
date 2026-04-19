@@ -16,12 +16,12 @@
 
 # Per-environment overlays. Replace @ariefnugrahaaa with a team handle
 # (e.g. @Cybe-Asia/devops-platform) once the team exists in the org.
-/overlays/dev/ @ariefnugrahaaa
-/overlays/test/ @ariefnugrahaaa
+/lab/dev/ @ariefnugrahaaa
+/lab/test/ @ariefnugrahaaa
 
 # Staging + production — stricter review expected. Add additional
 # reviewers here as the team grows.
-/overlays/staging/ @ariefnugrahaaa
+/lab/staging/ @ariefnugrahaaa
 /overlays/production/ @ariefnugrahaaa
 
 # ArgoCD Application manifests — cluster-wiring, high-impact

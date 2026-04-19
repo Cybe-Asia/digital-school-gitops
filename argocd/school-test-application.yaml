@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/Cybe-Asia/digital-school-gitops.git
     targetRevision: dev
-    path: overlays/test
+    path: lab/test
   destination:
     server: https://kubernetes.default.svc
     namespace: school-test
