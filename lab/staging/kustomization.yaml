@@ -88,7 +88,7 @@ patches:
       path: /spec/template/spec/containers/0/env/-
       value:
         name: UNLEASH_URL
-        value: "http://unleash.unleash.svc.cluster.local:4242/api/frontend"
+        value: "https://unleash.cybe.tech:8443/api/frontend"
     - op: add
       path: /spec/template/spec/containers/0/env/-
       value:
