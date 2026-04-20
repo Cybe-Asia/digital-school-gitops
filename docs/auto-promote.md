@@ -26,6 +26,21 @@ Full cascade, ~22 min end-to-end.
 
 Faster path (~10 min), bypasses lab validation. Use for emergencies.
 
+### Path C — push to service repo `qa/**` branch (isolated test-only)
+
+1. Service CI builds image, bumps `lab/test/kustomization.yaml` directly (skipping lab/dev and lab/staging)
+2. ArgoCD syncs `school-test-services` → image lands in namespace `school-test` only
+3. **No auto-promote cascade** — `auto-promote-lab.yml` is scoped to `paths: lab/dev/kustomization.yaml`, so a commit to `lab/test` does not trigger it. The commit message still carries a defensive `[skip promote]` marker.
+
+Use this for:
+- QA validation of a feature before merging to `main`
+- Reproducing a bug in the test namespace without contaminating dev
+- Running integration tests against a specific image without promoting further
+
+**Caveat:** the next push to `main` of any service will cascade through `lab/dev → lab/test`, overwriting the QA image in `lab/test`. Treat QA pins as ephemeral — merge to `main` when validation is done.
+
+Branch naming is required: the prefix must be `qa/` (e.g. `qa/bulk-upload`, `qa/fix-auth-race`). Anything else falls back to no overlay update.
+
 ## End-to-end timeline (Path A)
 
 ```
