@@ -1,70 +1,47 @@
-name: auto-promote-prod
+name: cutover
 
-# Stage 2 of 2: cascade from lab/staging into prod/<idle color>, then
-# auto-cutover routing, then 5-min post-cutover soak, with auto-rollback
-# on soak failure.
+# Manual blue/green cutover.
 #
-# Trigger: push to main that modified lab/staging/kustomization.yaml —
-# either:
-#   (a) sibling auto-promote-lab.yml committed an image-tag bump after
-#       the lab cascade completed
-#   (b) service CI pushed to a release-* branch which directly bumps
-#       lab/staging (bypasses lab/dev + lab/test, goes straight to
-#       staging → prod)
+# Companion to auto-promote-prod.yml's `skip_cutover: true` mode. Use
+# this when you've deployed a new image to the idle color (via the
+# skip_cutover flag) and you've manually verified it. This workflow
+# flips live routing to that idle color, then runs the same 5-minute
+# soak + auto-rollback as the automated path.
 #
-# Our own commits carry [skip promote] to prevent recursion.
+# This workflow does NOT re-deploy. It assumes the idle color already
+# has the image you want to go live — whatever was last promoted there.
+#
+# Manual trigger only (no automatic firing).
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'lab/staging/kustomization.yaml'
   workflow_dispatch:
-    # Manual trigger from GitHub Actions UI. Use this to promote the
-    # CURRENT state of lab/staging to prod — useful when:
-    #   • staging/** branch landed with [skip promote] and UAT passed,
-    #     and you want to ship WITHOUT a fresh rebuild via main/release-*
-    #   • emergency: roll the prod idle color to whatever lab/staging
-    #     currently pins (e.g. after rollback, re-promote a known-good)
     inputs:
       reason:
-        description: "Why are you manually promoting? (audit trail)"
+        description: "Why are you cutting over? (audit trail — e.g. 'UAT passed for bulk-upload feature')"
         required: true
         type: string
-      skip_cutover:
-        description: "Deploy to idle color and STOP before cutover — for manual testing on the idle URL before flipping live traffic."
-        required: false
-        default: false
-        type: boolean
 
 concurrency:
+  # Share the same group as auto-promote-prod so they never run at the
+  # same time — they both mutate prod/routing/live-ingress.yaml.
   group: auto-promote-prod
   cancel-in-progress: false
 
 jobs:
-  promote:
-    # Gate: block auto-runs when commit carries [skip promote], but
-    # ALWAYS allow manual workflow_dispatch runs (the whole point of
-    # manual trigger is to bypass the automatic skip).
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      !contains(github.event.head_commit.message, '[skip promote]')
+  cutover:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    timeout-minutes: 25
+    timeout-minutes: 15
     steps:
-      - name: Log manual trigger (audit)
-        if: github.event_name == 'workflow_dispatch'
+      - name: Log trigger (audit)
         run: |
           {
-            echo "## 🖱️ Manual promote triggered"
+            echo "## 🔀 Manual cutover triggered"
             echo ""
             echo "- Actor: **${{ github.actor }}**"
             echo "- Reason: **${{ github.event.inputs.reason }}**"
             echo "- Timestamp: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-            echo ""
-            echo "Promoting current state of \`lab/staging\` to idle prod color."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Checkout main
@@ -73,9 +50,6 @@ jobs:
           ref: main
           token: ${{ secrets.GITOPS_TOKEN }}
           fetch-depth: 0
-
-      - name: Setup kustomize
-        uses: imranismail/setup-kustomize@v2
 
       - name: Git identity
         run: |
@@ -98,7 +72,7 @@ jobs:
             echo "token=$token" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Determine idle prod color
+      - name: Determine live + idle colors
         id: color
         run: |
           live_ext=$(grep externalName prod/routing/live-ingress.yaml | head -1)
@@ -109,93 +83,39 @@ jobs:
             echo "live=green" >> "$GITHUB_OUTPUT"
             echo "idle=blue" >> "$GITHUB_OUTPUT"
           fi
-          echo "live=$(cat $GITHUB_OUTPUT | grep ^live= | cut -d= -f2)  idle=$(cat $GITHUB_OUTPUT | grep ^idle= | cut -d= -f2)"
 
-      - name: Promote lab/staging → prod/${{ steps.color.outputs.idle }}
-        run: |
-          set -eu
-          cd prod/${{ steps.color.outputs.idle }}
-          changed=0
-          while read -r image; do
-            tag=$(awk -v img="- name: $image$" '$0 ~ img {getline; getline; print; exit}' ../../lab/staging/kustomization.yaml | sed 's/.*newTag: //')
-            if [ -n "$tag" ]; then
-              kustomize edit set image "${image}=${image}:${tag}"
-              echo "  $image → $tag"
-              changed=1
-            fi
-          done <<'EOF'
-          ghcr.io/cybe-asia/admission-services
-          ghcr.io/cybe-asia/auth-services
-          ghcr.io/cybe-asia/digital-school-frontend
-          ghcr.io/cybe-asia/notification-services
-          ghcr.io/cybe-asia/otp-services
-          EOF
-          if [ "$changed" = "1" ] && ! git diff --quiet kustomization.yaml; then
-            git add kustomization.yaml
-            git commit -m "auto-promote: lab/staging → prod/${{ steps.color.outputs.idle }} [skip promote] [skip ci]"
-            git push origin main
-          else
-            echo "no diff — prod/${{ steps.color.outputs.idle }} already at lab/staging digests"
-          fi
-
-      - name: Wait for prod/${{ steps.color.outputs.idle }} Healthy
+      - name: Sanity — confirm idle is Healthy before flipping
         env:
           ARGOCD_URL: ${{ secrets.ARGOCD_URL }}
           ARGOCD_TOKEN: ${{ steps.argo.outputs.token }}
           HAVE_TOKEN: ${{ steps.argo.outputs.have_token }}
         run: |
+          idle="${{ steps.color.outputs.idle }}"
           if [ "$HAVE_TOKEN" = "true" ]; then
-            app="school-prod-${{ steps.color.outputs.idle }}-services"
-            for i in $(seq 1 40); do
-              status=$(curl -sk -H "Authorization: Bearer $ARGOCD_TOKEN" \
-                "$ARGOCD_URL/api/v1/applications/$app" | \
-                jq -r '"\(.status.sync.status)/\(.status.health.status)"')
-              echo "attempt $i: $status"
-              [ "$status" = "Synced/Healthy" ] && break
-              sleep 15
-            done
-            [ "$status" = "Synced/Healthy" ] || { echo "::error::prod/${{ steps.color.outputs.idle }} did not go Healthy"; exit 1; }
+            status=$(curl -sk -H "Authorization: Bearer $ARGOCD_TOKEN" \
+              "$ARGOCD_URL/api/v1/applications/school-prod-${idle}-services" | \
+              jq -r '"\(.status.sync.status)/\(.status.health.status)"')
+            echo "school-prod-${idle}-services: $status"
+            if [ "$status" != "Synced/Healthy" ]; then
+              echo "::error::Idle color prod-${idle} is not Synced/Healthy ($status). Refusing to cut over to an unhealthy target. Fix the idle pods first, or re-run auto-promote-prod with skip_cutover=true to redeploy."
+              exit 1
+            fi
           else
-            sleep 300
+            echo "::warning::No ArgoCD token — skipping Argo health gate (doing only smoke test)"
           fi
 
-      - name: External smoke test — idle color
-        id: idle_smoke
-        run: |
-          color="${{ steps.color.outputs.idle }}"
-          url="https://${color}.school.cybe.tech:8443/"
-          for i in $(seq 1 10); do
-            code=$(curl -sk --max-time 10 -o /dev/null -w "%{http_code}" "$url")
-            echo "attempt $i: HTTP $code"
-            [ "$code" = "200" ] || [ "$code" = "301" ] || [ "$code" = "302" ] && break
-            sleep 15
-          done
-          [ "$code" = "200" ] || [ "$code" = "301" ] || [ "$code" = "302" ] || { echo "::error::smoke test failed on $url"; exit 1; }
-
-      - name: Summary (stopped at idle — manual test)
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.skip_cutover == 'true'
+      - name: Sanity — smoke test idle URL
         run: |
           idle="${{ steps.color.outputs.idle }}"
-          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-          ## 🟡 Stopped at idle — manual testing window open
+          url="https://${idle}.school.cybe.tech:8443/"
+          code=$(curl -sk --max-time 10 -o /dev/null -w "%{http_code}" "$url")
+          echo "smoke: $url → HTTP $code"
+          case "$code" in
+            200|301|302|303) echo "OK" ;;
+            *) echo "::error::Idle smoke failed ($code). Refusing to cut over."; exit 1 ;;
+          esac
 
-          **Idle color: prod-${idle}** now has the lab/staging image.
-          **Live color: prod-${{ steps.color.outputs.live }}** (unchanged — users not affected).
-
-          ### Test the idle color:
-          - Direct URL: https://${idle}.school.cybe.tech:8443/
-          - Smoke test: \`curl -I https://${idle}.school.cybe.tech:8443/healthz\`
-
-          ### When happy, cut over to flip live traffic:
-          Trigger workflow: \`.github/workflows/cutover.yml\` → **Run workflow** → supply \`reason\`.
-
-          ### If this idle build is bad:
-          Do nothing. The next push to main or manual promote will
-          overwrite prod/${idle} with a fresh image.
-          EOF
-
-      - name: Auto-cutover (flip routing)
-        if: github.event.inputs.skip_cutover != 'true'
+      - name: Flip routing (cutover)
         id: cutover
         run: |
           set -eu
@@ -204,22 +124,19 @@ jobs:
           echo "flipping live: school-prod-${current_live} → school-prod-${new_live}"
           sed -i "s|school-prod-${current_live}\.svc\.cluster\.local|school-prod-${new_live}.svc.cluster.local|g" prod/routing/live-ingress.yaml
           if git diff --quiet prod/routing/live-ingress.yaml; then
-            echo "::warning::routing file unchanged — cutover may have already happened"
-            exit 0
+            echo "::error::routing file unchanged — live may already be on ${new_live}. Aborting."
+            exit 1
           fi
           git add prod/routing/live-ingress.yaml
-          git commit -m "auto-cutover: school.cybe.tech ${current_live} → ${new_live} [skip promote] [skip ci]"
+          git commit -m "manual-cutover: school.cybe.tech ${current_live} → ${new_live} — ${{ github.event.inputs.reason }} [skip promote] [skip ci]"
           cutover_sha=$(git rev-parse HEAD)
           git push origin main
           echo "cutover_sha=${cutover_sha}" >> "$GITHUB_OUTPUT"
-          echo "cutover commit: ${cutover_sha}"
 
       - name: Wait for Argo to sync routing
-        if: github.event.inputs.skip_cutover != 'true'
         run: sleep 45
 
       - name: Post-cutover soak (5 min)
-        if: github.event.inputs.skip_cutover != 'true'
         id: soak
         env:
           ARGOCD_URL: ${{ secrets.ARGOCD_URL }}
@@ -278,15 +195,13 @@ jobs:
           echo "::warning::ROLLED BACK — live traffic returned to prod-${{ steps.color.outputs.live }}. Post-mortem on prod-${{ steps.color.outputs.idle }} (idle)."
 
       - name: Summary (success)
-        if: success() && github.event.inputs.skip_cutover != 'true'
+        if: success()
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-          ## ✅ Release complete — prod cutover succeeded
+          ## ✅ Manual cutover complete
 
           **Live color now: prod-${{ steps.color.outputs.idle }}** (was prod-${{ steps.color.outputs.live }})
 
-          Prod pipeline:
-          - prod/${{ steps.color.outputs.idle }} ✅ (Synced + Healthy + smoke passed)
           - routing cutover ✅ (commit ${{ steps.cutover.outputs.cutover_sha }})
           - post-cutover soak ✅ (5 min)
 
@@ -297,12 +212,12 @@ jobs:
         if: steps.cutover.outcome == 'success' && steps.soak.outcome == 'failure'
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-          ## ⚠️ Release rolled back
+          ## ⚠️ Cutover rolled back
 
           Cutover to prod-${{ steps.color.outputs.idle }} succeeded but
           soak failed. Live traffic is back on **prod-${{ steps.color.outputs.live }}**.
 
-          Investigate prod-${{ steps.color.outputs.idle }} pods:
+          Investigate prod-${{ steps.color.outputs.idle }}:
           - Grafana: https://grafana.cybe.tech:8443/
           - ArgoCD: https://argo.cybe.tech:8443/applications/school-prod-${{ steps.color.outputs.idle }}-services
           EOF
@@ -311,8 +226,10 @@ jobs:
         if: failure() && steps.cutover.outcome != 'success'
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-          ## ⚠️ Prod cascade halted before cutover
+          ## ⚠️ Cutover halted (pre-flight failure)
 
-          Prod deploy or smoke test failed. Live traffic remains on
-          **prod-${{ steps.color.outputs.live }}** (unchanged).
+          Idle color prod-${{ steps.color.outputs.idle }} failed sanity checks (health or smoke).
+          Live traffic remains on **prod-${{ steps.color.outputs.live }}** (unchanged).
+
+          Check prod-${{ steps.color.outputs.idle }} pods in ArgoCD and Grafana before retrying.
           EOF

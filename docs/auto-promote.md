@@ -58,6 +58,36 @@ Use this for:
 2. **Cut `release-x.y.z` from the staging branch** — rebuild, then staging → prod (skips dev/test). ~10 min. Fast path when you want a fresh build but not lab re-verification.
 3. **Manual `workflow_dispatch` on `auto-promote-prod`** — re-uses the EXACT image already in `lab/staging` (no rebuild). ~7 min. Use this when you need the byte-identical image that was UAT'd to be what ships. Requires a `reason` input for audit. Trigger from GitHub Actions tab → `auto-promote-prod` → "Run workflow".
 
+### Path E — deploy to idle, test on idle URL, cut over manually
+
+Use this when you want to validate the new prod color (blue or green) **with your own hands** before flipping live traffic — QA on prod hardware without user impact.
+
+Two workflows:
+
+**Step 1 — deploy to idle only:**
+1. GitHub Actions tab → `auto-promote-prod` → **Run workflow**
+2. Fill inputs:
+   - `reason`: e.g. "testing green before cutover — release v1.2.3"
+   - `skip_cutover`: ☑ **true**
+3. Workflow promotes current `lab/staging` image to idle color, runs external smoke, then **stops**. No cutover, no soak. Live traffic unaffected.
+
+**Step 2 — manually test on the idle URL:**
+- Direct URL: `https://<idle-color>.school.cybe.tech:8443/` (e.g. `green.school.cybe.tech:8443`)
+- Run whatever validation you need: manual QA, load tests, security scans, stakeholder demos
+- Idle color stays untouched until you act (or someone else re-promotes it)
+
+**Step 3 — cut over when ready:**
+1. GitHub Actions tab → `cutover` → **Run workflow**
+2. Fill `reason` input (e.g. "green validated by Budi, shipping v1.2.3")
+3. Workflow flips routing → 5-min soak → auto-rollback on failure
+
+**Safety rails on `cutover`:**
+- Pre-flight checks: idle must be `Synced/Healthy` in ArgoCD AND smoke test must return 2xx/3xx before the routing flip
+- Refuses to cutover if routing already points at the claimed idle (no silent no-ops)
+- Same soak thresholds and auto-rollback as automatic path
+
+If you decide not to ship, just don't trigger `cutover`. The next push to main or manual promote will overwrite the idle image.
+
 **Caveat:** the next `release-*` push or any `main` merge that cascades to lab/staging will overwrite the staging pin. Treat staging/* pins as ephemeral too.
 
 Branch naming is required: the prefix must be `staging/` (e.g. `staging/uat-bulk-upload`, `staging/demo-q2`). Anything else falls back to no overlay update.
