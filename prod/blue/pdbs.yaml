@@ -1,0 +1,66 @@
+# PodDisruptionBudgets for school-prod-blue.
+#
+# Each prod service runs 3 replicas. Setting minAvailable: 2 means at
+# most 1 replica can be voluntarily disrupted at a time (node drain,
+# eviction, etc.). Unplanned crashes are NOT blocked by PDBs.
+#
+# Rationale: a noisy neighbour in lab/* namespaces could trigger node
+# memory pressure, causing kubelet to evict pods. Without PDB, kubelet
+# could evict all 3 prod replicas of a service simultaneously → full
+# outage for that service. PDB ensures 2 stay up.
+#
+# Neo4j (StatefulSet, 1 replica) is NOT covered — minAvailable: 1
+# would just block any voluntary disruption ever. For Neo4j we accept
+# that a drain causes brief downtime; the StatefulSet's backup +
+# restore drill + routing failover are the real DR plan.
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: admission-service
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: admission-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: auth-service
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: auth-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: notification-service
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: notification-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: otp-service
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: otp-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: frontend
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: frontend

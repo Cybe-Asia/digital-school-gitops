@@ -1,0 +1,53 @@
+# PodDisruptionBudgets for school-prod-green. See prod/blue/pdbs.yaml
+# for rationale — this is the identical file for the green color.
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: admission-service
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: admission-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: auth-service
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: auth-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: notification-service
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: notification-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: otp-service
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: otp-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: frontend
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: frontend
