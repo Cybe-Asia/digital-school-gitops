@@ -24,6 +24,7 @@ resources:
 - app-config.yaml
 - app-secrets-sealed.yaml
 - neo4j-secret-sealed.yaml
+- pdbs.yaml
 
 replicas:
 - name: admission-service
