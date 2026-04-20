@@ -129,6 +129,26 @@ data:
               "instant": true
             }
           ]
+        },
+        {
+          "id": 7,
+          "title": "Recent pod logs — errors and warnings",
+          "type": "logs",
+          "gridPos": {"h": 12, "w": 24, "x": 0, "y": 30},
+          "datasource": {"type": "loki", "uid": "loki"},
+          "targets": [
+            {
+              "expr": "{namespace=~\"$namespace\"} |~ \"(?i)(error|warn|fatal|panic|exception|traceback)\"",
+              "maxLines": 500
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": true,
+            "wrapLogMessage": true,
+            "sortOrder": "Descending",
+            "dedupStrategy": "none"
+          }
         }
       ]
     }

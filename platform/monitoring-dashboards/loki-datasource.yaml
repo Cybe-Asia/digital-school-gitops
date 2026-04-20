@@ -1,0 +1,23 @@
+# Grafana auto-discovers datasources from ConfigMaps with label
+# `grafana_datasource: "1"` in the monitoring namespace (the sidecar
+# ships with kube-prometheus-stack). Dropping this in the same folder
+# as our dashboards so one Argo app handles both.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loki-datasource
+  namespace: monitoring
+  labels:
+    grafana_datasource: "1"
+data:
+  loki-datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki.monitoring.svc.cluster.local:3100
+        jsonData:
+          maxLines: 1000
+        version: 1
+        editable: true
