@@ -18,26 +18,6 @@ resources:
 - app-secrets-sealed.yaml
 - neo4j-secret-sealed.yaml
 
-    # Feature flags (Unleash). UNLEASH_FRONTEND_TOKEN is pulled from
-    # the sealed secret `unleash-frontend-token` — admin must seal the
-    # token (scoped to environment=test) before the frontend pod can
-    # start with flags enabled. Without the secret, frontend still
-    # boots and runs in "disabled" mode, using code defaults.
-    # Feature flags (Unleash). UNLEASH_FRONTEND_TOKEN is pulled from
-    # the sealed secret `unleash-frontend-token` — admin must seal the
-    # token (scoped to environment=test) before the frontend pod can
-    # start with flags enabled. Without the secret, frontend still
-    # boots and runs in "disabled" mode, using code defaults.
-    # Feature flags (Unleash). UNLEASH_FRONTEND_TOKEN is pulled from
-    # the sealed secret `unleash-frontend-token` — admin must seal the
-    # token (scoped to environment=test) before the frontend pod can
-    # start with flags enabled. Without the secret, frontend still
-    # boots and runs in "disabled" mode, using code defaults.
-    # Feature flags (Unleash). UNLEASH_FRONTEND_TOKEN is pulled from
-    # the sealed secret `unleash-frontend-token` — admin must seal the
-    # token (scoped to environment=test) before the frontend pod can
-    # start with flags enabled. Without the secret, frontend still
-    # boots and runs in "disabled" mode, using code defaults.
 patches:
 - patch: |-
     - op: replace
