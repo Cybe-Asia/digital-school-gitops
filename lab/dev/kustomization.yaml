@@ -85,7 +85,7 @@ images:
   newTag: sha-167cc44
 - name: ghcr.io/cybe-asia/auth-services
   newName: ghcr.io/cybe-asia/auth-services
-  newTag: sha-fb3c995
+  newTag: sha-fb22d5d
 - name: ghcr.io/cybe-asia/digital-school-frontend
   newName: ghcr.io/cybe-asia/digital-school-frontend
   newTag: sha-b82b707
