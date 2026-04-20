@@ -1,0 +1,75 @@
+# Loki + Promtail for log aggregation.
+# Grafana (already running from kube-prometheus-stack) auto-discovers
+# Loki via the datasource ConfigMap created by this app.
+#
+# Scope: all pod logs across every namespace in the cluster. You'll be
+# able to Grafana Explore → Loki → {namespace="school-prod-blue"} and
+# see actual pod logs.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki-stack
+  namespace: platform-system
+spec:
+  project: default
+  source:
+    chart: loki-stack
+    repoURL: https://grafana.github.io/helm-charts
+    targetRevision: 2.10.2
+    helm:
+      releaseName: loki
+      valuesObject:
+        # Grafana is already running from kube-prometheus-stack — don't
+        # install a second one.
+        grafana:
+          enabled: false
+
+        loki:
+          enabled: true
+          isDefault: false
+          persistence:
+            enabled: true
+            storageClassName: local-path
+            size: 10Gi
+          config:
+            table_manager:
+              retention_deletes_enabled: true
+              retention_period: 168h   # 7 days — balance between debug window + disk cost
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+        promtail:
+          enabled: true
+          # Log shipping daemonset — one pod per node, mounts host /var/log
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+
+        prometheus:
+          # We already have Prometheus; don't stand up another one
+          enabled: false
+
+        fluent-bit:
+          # Using promtail instead
+          enabled: false
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
