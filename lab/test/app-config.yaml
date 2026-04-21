@@ -16,3 +16,11 @@ data:
   SMTP_HOST: "smtp.resend.com"
   SMTP_PORT: "587"
   SMTP_USER: "resend"
+  # Payment (Xendit) — test/sandbox mode. Register webhook URL in Xendit:
+  #   http://school-test.cybe.tech/api/v1/payments/webhook/xendit
+  TENANT_ID: "TENANT-001"
+  XENDIT_API_URL: "https://api.xendit.co"
+  XENDIT_SUCCESS_REDIRECT_URL: "http://school-test.cybe.tech/auth/setup-account/payment/return?status=paid"
+  XENDIT_FAILURE_REDIRECT_URL: "http://school-test.cybe.tech/auth/setup-account/payment/return?status=failed"
+  DEFAULT_FEE_CURRENCY: "IDR"
+  DEFAULT_FEE_DUE_HOURS: "168"

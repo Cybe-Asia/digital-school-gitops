@@ -9,6 +9,7 @@ resources:
 - ../../base/auth
 - ../../base/notification
 - ../../base/otp
+- ../../base/payment
 - ../../base/frontend
 - ../../base/neo4j
 - ../../base/governance
@@ -116,6 +117,16 @@ patches:
     kind: Service
     name: frontend
 - patch: |-
+    - op: replace
+      path: /spec/type
+      value: NodePort
+    - op: add
+      path: /spec/ports/0/nodePort
+      value: 31106
+  target:
+    kind: Service
+    name: payment-service
+- patch: |-
     # Resolve school-test.cybe.tech → traefik ClusterIP inside the pod so
     # the Next.js proxy sends Host: school-test.cybe.tech → traefik's ingress
     # rule for school-test-ingress matches → requests stay in this namespace.
@@ -183,3 +194,6 @@ images:
 - name: ghcr.io/cybe-asia/otp-services
   newName: ghcr.io/cybe-asia/otp-services
   newTag: sha-48a0e26
+- name: ghcr.io/cybe-asia/payment-services
+  newName: ghcr.io/cybe-asia/payment-services
+  newTag: latest
