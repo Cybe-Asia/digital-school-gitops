@@ -24,3 +24,8 @@ data:
   XENDIT_FAILURE_REDIRECT_URL: "http://school-test.cybe.tech/auth/setup-account/payment/return?status=failed"
   DEFAULT_FEE_CURRENCY: "IDR"
   DEFAULT_FEE_DUE_HOURS: "168"
+  # Admin review queue allowlist — comma-separated emails that are
+  # allowed to hit /admin/applications* on admission-service. Empty/unset
+  # means no admins exist (every admin call returns 403). Tighten to
+  # real staff emails in prod; rotate via gitops.
+  ADMIN_EMAILS: "arief.nugrahaaa@gmail.com"
