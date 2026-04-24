@@ -169,15 +169,22 @@ SCSS;
 
 $CFG->forced_plugin_settings = [
     'theme_boost' => [
-        // Boost theme concatenates these around its own
-        // _variables.scss. scsspre runs BEFORE default SASS
-        // vars so $primary overrides stock Bootstrap.
-        'scsspre' => $twsi_scss_pre,
-        'scss'    => $twsi_scss_post,
+        // Raw SCSS slots — the ONLY correct names for Boost's custom
+        // SCSS injection. `scsspre` / `scss` are deprecated and are
+        // silently ignored by theme/boost/classes/output/core_renderer.php
+        // (took a round of "why isn't the palette applying?" debugging
+        // to catch this one — hence the hard-coded rename).
+        //
+        //   rawscsspre  runs BEFORE Boost's default _variables.scss,
+        //               so $primary here wins over the stock Bootstrap
+        //               blue when Boost compiles its SCSS bundle.
+        //   rawscss     runs AFTER the compiled bundle, so pure CSS
+        //               overrides here cascade over everything Boost
+        //               generated.
+        'rawscsspre' => $twsi_scss_pre,
+        'rawscss'    => $twsi_scss_post,
         // Flat brand colour for the navbar + link hover shim.
         'brandcolor' => '#0B6E4F',
-        // Clean login page — no stock Boost background image.
-        'loginbackgroundimage' => '',
     ],
 ];
 
