@@ -110,6 +110,16 @@ spec:
             - mountPath: /var/www/html/config.php
               name: moodle-config
               subPath: config.php
+            # Moodle's bootstrap (triggered by require('config.php'))
+            # expects $CFG->dataroot (= /var/moodledata) to exist and be
+            # writable. Without this mount the Job pod crashes during
+            # setup.php before ever reaching our init logic. We mount
+            # the SAME PVC the live Moodle Deployment uses so the
+            # purge_all_caches() call wipes the actual caches the
+            # running pod is reading from — mounting a blank emptyDir
+            # would purge nothing useful.
+            - mountPath: /var/moodledata
+              name: moodledata
             - mountPath: /opt/twsi-brand/init.php
               name: init-script
               subPath: init.php
@@ -117,6 +127,9 @@ spec:
         - name: moodle-config
           configMap:
             name: moodle-config
+        - name: moodledata
+          persistentVolumeClaim:
+            claimName: moodle-pvc
         - name: init-script
           configMap:
             name: moodle-twsi-brand-init
