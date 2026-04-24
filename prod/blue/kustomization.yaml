@@ -34,6 +34,7 @@ resources:
 - ../../base/moodle
 - moodle-ingress.yaml
 - moodle-mariadb-secret-sealed.yaml
+- moodle-frontend-secret-sealed.yaml
 
 replicas:
 - name: admission-service
@@ -83,6 +84,59 @@ patches:
   target:
     kind: Deployment
     name: moodle
+
+# Moodle LMS integration for the admissions online-test flow. Wires
+# the frontend pod to the in-cluster Moodle instance in this env.
+- patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: MOODLE_INTERNAL_URL
+        value: http://moodle:80
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: MOODLE_PUBLIC_URL
+        value: http://school-moodle.cybe.tech
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: MOODLE_IIHS_COURSE_ID
+        value: 2
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: MOODLE_IIHS_QUIZ_CMID
+        value: 3
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: MOODLE_IISS_COURSE_ID
+        value: 3
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: MOODLE_IISS_QUIZ_CMID
+        value: 4
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: MOODLE_API_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: moodle-frontend-secret
+            key: MOODLE_API_TOKEN
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: MOODLE_STUDENT_PASSWORD_SALT
+        valueFrom:
+          secretKeyRef:
+            name: moodle-frontend-secret
+            key: MOODLE_STUDENT_PASSWORD_SALT
+  target:
+    kind: Deployment
+    name: frontend
 
 images:
 # Image tags default to current lab/staging pins. In practice, the
