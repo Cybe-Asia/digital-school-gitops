@@ -59,6 +59,30 @@ data:
         echo "[twsi-init] Site course already on-brand, no DB write\n";
     }
 
+    // Force the auth plugin chain. Moodle stores this in mdl_config
+    // under the 'auth' key. The value can drift in mysterious ways
+    // (observed: gets reset to plain 'email' on some pod restarts,
+    // breaking the auth_userkey SSO flow from the parent portal —
+    // the plugin's externallib.php throws "pluginisdisabled" when
+    // is_enabled_auth('userkey') returns false).
+    //
+    //   manual  — local username+password login (Moodle admins)
+    //   email   — self-signup via email (legacy fallback)
+    //   userkey — catalyst/moodle-auth_userkey — the SSO path our
+    //             admission-service uses to sign students into the
+    //             quiz without them typing a password
+    //
+    // Writing on every sync is cheap and keeps the chain canonical
+    // regardless of what drifted it.
+    $TARGET_AUTH = 'manual,email,userkey';
+    $current_auth = get_config('core', 'auth') ?: '';
+    if ($current_auth !== $TARGET_AUTH) {
+        set_config('auth', $TARGET_AUTH);
+        echo "[twsi-init] auth chain: '{$current_auth}' → '{$TARGET_AUTH}'\n";
+    } else {
+        echo "[twsi-init] auth chain already correct\n";
+    }
+
     // Purge every cache so the new forced_plugin_settings theme SCSS
     // recompiles and any stale language / nav / string caches clear.
     // purge_all_caches() is Moodle's canonical "wipe everything" call —
