@@ -85,15 +85,16 @@ $CFG->directorypermissions = 0777;
 // ------------------------------------------------------------------
 $CFG->theme = 'boost';
 
+// IMPORTANT: do NOT put `@import url("https://fonts.googleapis.com/...")`
+// in scsspre — scssphp 1.x silently drops the compiled output for the
+// extra_scss slot when it encounters a CSS @import with a query string
+// in the prepended SCSS. Debugged this the hard way: scssphp returned
+// a 1 MB CSS bundle with every subsequent rule missing. Load the font
+// via additionalhtmlhead below instead (pushes a <link> into <head>).
 $twsi_scss_pre = <<<'SCSS'
-// Montserrat — TWSI body/heading face per brand guidelines.
-// Cinzel is NOT loaded here: it's reserved for the logo wordmark
-// only, rendered by the parent-portal <TwsiLogo> component.
-@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap");
-
-// -----------------------------------------------------------------
-//  TWSI light-mode palette (brand guidelines page 3)
-// -----------------------------------------------------------------
+// TWSI light-mode palette (brand guidelines page 3). These SCSS
+// variables are defined up-front so anything referencing $primary et
+// al. in Boost's SCSS (and in our scsspost below) uses TWSI values.
 $primary:         #0B6E4F;   // Emerald Green — brand primary
 $brand-cta:       #0FB67A;   // Emerald Action — CTA fill
 $brand-hover:     #084D37;   // Dark Emerald — hover / pressed
@@ -192,6 +193,15 @@ $CFG->forced_plugin_settings = [
         // reads this directly (theme_boost_get_pre_scss reads
         // 'brandcolor' and injects $primary early in the SCSS).
         'brandcolor' => '#0B6E4F',
+    ],
+    // Site-wide presentation. additionalhtmlhead is injected verbatim
+    // into every page's <head> — this is where we load the Montserrat
+    // web-font (can't @import it from SCSS, see comment on scsspre).
+    'core' => [
+        'additionalhtmlhead' =>
+            '<link rel="preconnect" href="https://fonts.googleapis.com">' .
+            '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' .
+            '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap">',
     ],
 ];
 
