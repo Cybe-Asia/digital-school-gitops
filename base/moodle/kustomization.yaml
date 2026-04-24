@@ -24,8 +24,27 @@ resources:
 - moodle.yaml
 # One-shot ArgoCD PostSync Job: writes TWSI site name to mdl_course
 # and runs purge_all_caches() so the forced_plugin_settings theme
-# SCSS (in moodle.yaml) actually compiles and serves.
+# SCSS (loaded from config/config.php) actually compiles and serves.
 - brand-init.yaml
+
+# Generate the three Moodle ConfigMaps from files under config/.
+# Kustomize appends a content-hash suffix to each ConfigMap name
+# (e.g. moodle-config-a1b2c3d) and rewrites every reference in the
+# Deployment + brand-init Job to match. Any byte-level change in
+# config.php / 000-default.conf / zz-moodle.ini therefore produces
+# a fresh ConfigMap name, which triggers Kubernetes to see a
+# Deployment template diff and roll the pod automatically. No
+# `kubectl rollout restart` needed.
+configMapGenerator:
+- name: moodle-config
+  files:
+    - config.php=config/config.php
+- name: moodle-apache-vhost
+  files:
+    - 000-default.conf=config/000-default.conf
+- name: moodle-php-ini
+  files:
+    - zz-moodle.ini=config/zz-moodle.ini
 
 labels:
 - pairs:
