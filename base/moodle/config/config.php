@@ -194,15 +194,20 @@ $CFG->forced_plugin_settings = [
         // 'brandcolor' and injects $primary early in the SCSS).
         'brandcolor' => '#0B6E4F',
     ],
-    // Site-wide presentation. additionalhtmlhead is injected verbatim
-    // into every page's <head> — this is where we load the Montserrat
-    // web-font (can't @import it from SCSS, see comment on scsspre).
-    'core' => [
-        'additionalhtmlhead' =>
-            '<link rel="preconnect" href="https://fonts.googleapis.com">' .
-            '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' .
-            '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap">',
-    ],
 ];
+
+// Inject Montserrat into every page's <head>. We assign directly on
+// $CFG here rather than going through forced_plugin_settings['core']
+// because Moodle reads $CFG->additionalhtmlhead at output-buffer time
+// from the $CFG object itself — forced_plugin_settings only overrides
+// get_config() lookups, which this code path bypasses.
+//
+// preconnect hints go first so the browser opens the TLS session to
+// fonts.googleapis.com + fonts.gstatic.com in parallel with its own
+// parsing of the stylesheet reference.
+$CFG->additionalhtmlhead =
+    '<link rel="preconnect" href="https://fonts.googleapis.com">' .
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' .
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap">';
 
 require_once(__DIR__ . '/lib/setup.php');
