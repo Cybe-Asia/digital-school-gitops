@@ -11,8 +11,8 @@ data:
   SMTP_PORT: "587"
   SMTP_USER: "apikey"
   # Object storage for admissions DocumentArtifact bytes. See
-  # prod/blue/app-config.yaml for full notes; same shape, separate
-  # bucket per color.
+  # prod/blue/app-config.yaml for full notes. Same bucket name in both
+  # colors — separate underlying StatefulSet means no shared data.
   MINIO_ENDPOINT: "http://minio:9000"
-  MINIO_BUCKET: "ds-documents-green"
+  MINIO_BUCKET: "ds-documents"
   MINIO_REGION: "us-east-1"
