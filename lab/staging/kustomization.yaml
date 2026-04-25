@@ -3,6 +3,12 @@ kind: Kustomization
 
 namespace: school-staging
 
+
+# Moodle LMS: admissions-test engine + future student learning.
+# Base at base/moodle/; overlay adds per-env ingress + sealed DB secret.
+# Post-deploy one-time install (see runbooks/moodle-first-deploy.md):
+#   kubectl -n <ns> exec deploy/moodle -- \
+#     php /var/www/html/admin/cli/install_database.php --agree-license ...
 resources:
 - namespace.yaml
 - ../../base/admission
@@ -19,28 +25,22 @@ resources:
 - neo4j-secret-sealed.yaml
 - smoke-test-job.yaml
 - unleash-frontend-token.sealed.yaml
-
-# Moodle LMS: admissions-test engine + future student learning.
-# Base at base/moodle/; overlay adds per-env ingress + sealed DB secret.
-# Post-deploy one-time install (see runbooks/moodle-first-deploy.md):
-#   kubectl -n <ns> exec deploy/moodle -- \
-#     php /var/www/html/admin/cli/install_database.php --agree-license ...
 - ../../base/moodle
 - moodle-ingress.yaml
 - moodle-mariadb-secret-sealed.yaml
 - moodle-frontend-secret-sealed.yaml
 
 replicas:
-- name: admission-service
-  count: 2
-- name: auth-service
-  count: 2
-- name: notification-service
-  count: 2
-- name: otp-service
-  count: 2
-- name: frontend
-  count: 2
+- count: 2
+  name: admission-service
+- count: 2
+  name: auth-service
+- count: 2
+  name: notification-service
+- count: 2
+  name: otp-service
+- count: 2
+  name: frontend
 
 patches:
 - patch: |-
@@ -118,9 +118,6 @@ patches:
   target:
     kind: Deployment
     name: frontend
-# MOODLE_WWWROOT is the canonical URL for Moodle CLI tools.
-# Live HTTP requests still read HTTP_HOST, but cron/install
-# has no HTTP context and needs this fallback.
 - patch: |-
     - op: replace
       path: /spec/template/spec/containers/0/env/1/value
@@ -128,9 +125,6 @@ patches:
   target:
     kind: Deployment
     name: moodle
-
-# Moodle LMS integration for the admissions online-test flow. Wires
-# the frontend pod to the in-cluster Moodle instance in this env.
 - patch: |-
     - op: add
       path: /spec/template/spec/containers/0/env/-
@@ -181,10 +175,6 @@ patches:
   target:
     kind: Deployment
     name: frontend
-
-# Moodle integration for admission-service. Reuses moodle-frontend-secret
-# (same API token + salt as the frontend pod). Without these the new
-# /me/students/:id/online-test/sync endpoint returns 501.
 - patch: |-
     - op: add
       path: /spec/template/spec/containers/0/env/-
@@ -221,16 +211,16 @@ patches:
 images:
 - name: ghcr.io/cybe-asia/admission-services
   newName: ghcr.io/cybe-asia/admission-services
-  newTag: dev-9ebf50f
+  newTag: sha-163f474
 - name: ghcr.io/cybe-asia/auth-services
   newName: ghcr.io/cybe-asia/auth-services
-  newTag: dev-79341be
+  newTag: sha-c70a7fa
 - name: ghcr.io/cybe-asia/digital-school-frontend
   newName: ghcr.io/cybe-asia/digital-school-frontend
-  newTag: dev-09a3a9b
+  newTag: sha-dd31a57
 - name: ghcr.io/cybe-asia/notification-services
   newName: ghcr.io/cybe-asia/notification-services
-  newTag: dev-a11e3e4
+  newTag: sha-59bbf0a
 - name: ghcr.io/cybe-asia/otp-services
   newName: ghcr.io/cybe-asia/otp-services
-  newTag: dev-e0cab3a
+  newTag: sha-bf8101b
