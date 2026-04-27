@@ -108,12 +108,12 @@ patches:
       path: /spec/template/spec/containers/0/env/-
       value:
         name: API_GATEWAY_URL
-        value: "http://school-staging.cybe.tech"
+        value: "https://school-staging.cybe.tech:8443"
     - op: add
       path: /spec/template/spec/containers/0/env/-
       value:
         name: NEXT_PUBLIC_API_GATEWAY_URL
-        value: "http://school-staging.cybe.tech"
+        value: "https://school-staging.cybe.tech:8443"
     # SSR bypass: the Host-aliased gateway URL above works for most
     # paths but Traefik returns 404 for /api/leads/v1/* when the pod
     # reaches it via the ClusterIP shortcut. Point SSR fetches

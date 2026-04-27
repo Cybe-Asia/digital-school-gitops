@@ -14,9 +14,13 @@ data:
   #   - the post-registration redirect after EOI submit
   #   - any other server-built absolute URL
   #
-  # staging serves over plain HTTP (no :8443 LE cert hack like test).
-  # When L3 lands (cert-manager wildcard via DNS-01), flip to https://.
-  FRONTEND_URL: "http://school-staging.cybe.tech"
+  # Pinned to :8443 because that's where the LE-trusted wildcard cert
+  # is served (same hack as school-test). Plain :80 redirects through
+  # the host nginx default block to https://, which collides with the
+  # UniFi router admin on :443. When L3 lands (cert-manager wildcard
+  # via DNS-01), Traefik takes :443 with a real cert and we drop the
+  # :8443 suffix.
+  FRONTEND_URL: "https://school-staging.cybe.tech:8443"
   # Transactional email via Resend (smtp.resend.com — STARTTLS on 587).
   # Requires SMTP_PASSWORD in app-secrets-sealed.yaml. Re-seal that
   # secret for the school-staging namespace with the Resend API key
@@ -27,11 +31,13 @@ data:
   SMTP_PORT: "587"
   SMTP_USER: "resend"
   # Payment (Xendit) — test/sandbox mode. Register webhook URL in Xendit:
-  #   http://school-staging.cybe.tech/api/v1/payments/webhook/xendit
+  #   https://school-staging.cybe.tech:8443/api/v1/payments/webhook/xendit
+  # Polling fallback (payment-service GET /api/v1/payments/:id) covers
+  # the case where the webhook doesn't get registered.
   TENANT_ID: "TENANT-001"
   XENDIT_API_URL: "https://api.xendit.co"
-  XENDIT_SUCCESS_REDIRECT_URL: "http://school-staging.cybe.tech/auth/setup-account/payment/return?status=paid"
-  XENDIT_FAILURE_REDIRECT_URL: "http://school-staging.cybe.tech/auth/setup-account/payment/return?status=failed"
+  XENDIT_SUCCESS_REDIRECT_URL: "https://school-staging.cybe.tech:8443/auth/setup-account/payment/return?status=paid"
+  XENDIT_FAILURE_REDIRECT_URL: "https://school-staging.cybe.tech:8443/auth/setup-account/payment/return?status=failed"
   DEFAULT_FEE_CURRENCY: "IDR"
   DEFAULT_FEE_DUE_HOURS: "168"
   # Admin review queue allowlist — comma-separated emails that are
