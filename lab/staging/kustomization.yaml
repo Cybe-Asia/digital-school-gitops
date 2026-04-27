@@ -29,6 +29,13 @@ resources:
 - moodle-ingress.yaml
 - moodle-mariadb-secret-sealed.yaml
 - moodle-frontend-secret-sealed.yaml
+# MinIO object store for admissions documents.
+# Sealed creds live in lab/staging/minio-secret-sealed.yaml (root) and
+# the scoped MINIO_ACCESS_KEY/MINIO_SECRET_KEY have been merged into
+# lab/staging/app-secrets-sealed.yaml. Same shape as lab/test +
+# prod/blue,green.
+- ../../base/minio
+- minio-secret-sealed.yaml
 
 replicas:
 - count: 2
