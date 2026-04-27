@@ -28,6 +28,13 @@ resources:
 - neo4j-secret-sealed.yaml
 - minio-secret-sealed.yaml
 - unleash-frontend-token.sealed.yaml
+# Separate GHCR pull secret for sis-services. The org-wide
+# ghcr-secret (Fauzi's token) doesn't have access to the
+# sis-services package; arief's token does. The current
+# sis-service pod runs from a long-cached image layer and would
+# break on next restart without this patch. See lab/staging for
+# the same pattern.
+- ghcr-secret-sis-sealed.yaml
 - ../../base/moodle
 - moodle-ingress.yaml
 - moodle-mariadb-secret-sealed.yaml
@@ -2320,6 +2327,18 @@ patches:
   target:
     kind: Deployment
     name: admission-service
+# sis-service pull secret patch — kubelet tries imagePullSecrets in
+# order; ghcr-secret-sis carries the token with sis-services package
+# access, ghcr-secret stays as the org-wide fallback for any other
+# layer reuse. Same pattern as lab/staging.
+- patch: |-
+    - op: add
+      path: /spec/template/spec/imagePullSecrets/-
+      value:
+        name: ghcr-secret-sis
+  target:
+    kind: Deployment
+    name: sis-service
 
 images:
 - name: ghcr.io/ariefnugrahaaa/payment-services
@@ -2342,4 +2361,9 @@ images:
   newTag: sha-bf8101b
 - name: ghcr.io/cybe-asia/sis-services
   newName: ghcr.io/cybe-asia/sis-services
-  newTag: sha-1e0f891
+  # sha-1e0f891 was pruned from GHCR. The current available tag
+  # (verified via tag-list against the package) is sha-d28ab33.
+  # The running pod was on the older tag from local-image cache;
+  # this bump aligns with what the registry actually has so a
+  # restart can re-pull cleanly.
+  newTag: sha-d28ab33
