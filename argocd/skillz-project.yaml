@@ -1,0 +1,63 @@
+# Domain-scoped Argo Project for Skillz (Moodle-based LMS).
+#
+# Restricts every skillz-* Argo Application to:
+#   - sourcing from Cybe-Asia/digital-school-moodle-gitops only
+#   - deploying into skillz-* namespaces only (lab envs + prod colors)
+#   - creating only a defined set of resource kinds
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: skillz
+  namespace: platform-system
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Skillz domain — lab (dev/staging) + prod (blue/green/routing)
+
+  sourceRepos:
+    - https://github.com/Cybe-Asia/digital-school-moodle-gitops.git
+
+  destinations:
+    - namespace: skillz-dev
+      server: https://kubernetes.default.svc
+    - namespace: skillz-staging
+      server: https://kubernetes.default.svc
+    - namespace: skillz-prod-blue
+      server: https://kubernetes.default.svc
+    - namespace: skillz-prod-green
+      server: https://kubernetes.default.svc
+    - namespace: skillz-prod-routing
+      server: https://kubernetes.default.svc
+
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: Secret
+    - group: ""
+      kind: ServiceAccount
+    - group: ""
+      kind: PersistentVolumeClaim
+    - group: apps
+      kind: Deployment
+    - group: apps
+      kind: StatefulSet
+    - group: networking.k8s.io
+      kind: Ingress
+    - group: networking.k8s.io
+      kind: NetworkPolicy
+    - group: batch
+      kind: Job
+    - group: batch
+      kind: CronJob
+    - group: cert-manager.io
+      kind: Certificate
+
+  orphanedResources:
+    warn: true

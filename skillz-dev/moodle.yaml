@@ -1,0 +1,110 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: skillz-dev
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: moodle-pvc
+  namespace: skillz-dev
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: local-path
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: moodle
+  namespace: skillz-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: moodle
+  template:
+    metadata:
+      labels:
+        app: moodle
+    spec:
+      containers:
+      - image: ghcr.io/cybe-asia/digital-school-moodle:latest
+        imagePullPolicy: Always
+        name: moodle
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - mountPath: /var/moodledata
+          name: moodledata
+        - mountPath: /var/www/html/config.php
+          name: moodle-config
+          subPath: config.php
+        - mountPath: /etc/apache2/sites-available/000-default.conf
+          name: apache-vhost
+          subPath: 000-default.conf
+      imagePullSecrets:
+      - name: ghcr-secret
+      volumes:
+      - name: moodledata
+        persistentVolumeClaim:
+          claimName: moodle-pvc
+      - configMap:
+          name: moodle-config
+        name: moodle-config
+      - configMap:
+          name: moodle-apache-vhost
+        name: apache-vhost
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: moodle
+  namespace: skillz-dev
+spec:
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 80
+  - name: https
+    port: 8443
+    targetPort: 80
+  selector:
+    app: moodle
+  type: LoadBalancer
+---
+apiVersion: v1
+data:
+  000-default.conf: "<VirtualHost *:80>\n    ServerAdmin webmaster@localhost\n   \
+    \ DocumentRoot /var/www/html/public\n\n    <Directory /var/www/html/public>\n\
+    \        Options FollowSymLinks\n        AllowOverride All\n        Require all\
+    \ granted\n    </Directory>\n\n    ErrorLog ${APACHE_LOG_DIR}/error.log\n    CustomLog\
+    \ ${APACHE_LOG_DIR}/access.log combined\n</VirtualHost>\n"
+kind: ConfigMap
+metadata:
+  name: moodle-apache-vhost
+  namespace: skillz-dev
+---
+apiVersion: v1
+data:
+  config.php: "<?php  // Moodle configuration file\nunset($CFG);\nglobal $CFG;\n$CFG\
+    \ = new stdClass();\n\n$CFG->dbtype    = 'mariadb';\n$CFG->dblibrary = 'native';\n\
+    $CFG->dbhost    = 'mariadb.skillz-dev.svc.cluster.local';\n$CFG->dbname    = 'moodle';\n\
+    $CFG->dbuser    = 'moodle';\n$CFG->dbpass    = 'moodlepassword';\n$CFG->prefix\
+    \    = 'mdl_';\n$CFG->dboptions = array (\n  'dbpersist' => 0,\n  'dbport' =>\
+    \ '',\n  'dbsocket' => '',\n  'dbcollation' => 'utf8mb4_unicode_ci',\n);\n\nif\
+    \ (isset($_SERVER['HTTP_HOST'])) {\n    $protocol = (isset($_SERVER['HTTPS'])\
+    \ && $_SERVER['HTTPS'] === 'on') ? \"https\" : \"http\";\n    // Also respect\
+    \ HTTP_X_FORWARDED_PROTO if behind proxy/ingress\n    if (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])\
+    \ && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {\n        $protocol = 'https';\n\
+    \    }\n    $CFG->wwwroot = $protocol . '://' . $_SERVER['HTTP_HOST'];\n} else\
+    \ {\n    $CFG->wwwroot = 'http://skillz-dev.local';\n}\n\n$CFG->dataroot  = '/var/moodledata';\n\
+    $CFG->admin     = 'admin';\n$CFG->directorypermissions = 0777;\n\nrequire_once(__DIR__\
+    \ . '/lib/setup.php');\n"
+kind: ConfigMap
+metadata:
+  name: moodle-config
+  namespace: skillz-dev

@@ -1,0 +1,67 @@
+# LIVE HOSTNAME — this is the file that flips during a blue/green
+# cutover. Today it points at skillz-prod-blue. To flip live traffic
+# to green:
+#
+#   1. Confirm green is healthy:   curl https://green.skillz.cybe.tech/
+#   2. Edit this file — change every ExternalName from
+#        *.skillz-prod-blue.svc.cluster.local
+#      to
+#        *.skillz-prod-green.svc.cluster.local
+#   3. Submit PR. CODEOWNERS requires approval (this is a production
+#      ingress change).
+#   4. After merge, Argo syncs Traefik config. skillz.cybe.tech now
+#      resolves to green.
+#   5. Monitor for 30 minutes. Rollback = revert the PR.
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: skillz-prod-routing
+  labels:
+    domain: skillz
+    environment: prod
+    owner: devops
+
+---
+# ExternalName service that delegates to the currently-live color.
+# Edit .spec.externalName here to flip.
+apiVersion: v1
+kind: Service
+metadata:
+  name: live-moodle
+  namespace: skillz-prod-routing
+spec:
+  type: ExternalName
+  externalName: moodle.skillz-prod-blue.svc.cluster.local
+  ports:
+    - port: 8080
+
+---
+# Live hostname — skillz.cybe.tech. Route points at the ExternalName
+# service above, which in turn delegates to whichever color is live.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: skillz-live-ingress
+  namespace: skillz-prod-routing
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - skillz.cybe.tech
+      secretName: skillz-live-tls
+  rules:
+    - host: skillz.cybe.tech
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: live-moodle
+                port:
+                  number: 8080

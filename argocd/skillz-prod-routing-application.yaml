@@ -1,0 +1,27 @@
+# The cutover-sensitive Application. Edits to skillz-prod-routing/live-ingress.yaml
+# flip live traffic between colors. Automated sync is ON here because routing
+# changes should propagate fast — the merge-to-live gap should be <1 minute
+# for rollback purposes.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: skillz-prod-routing-services
+  namespace: platform-system
+  labels:
+    app.kubernetes.io/part-of: skillz
+    environment: prod
+spec:
+  project: skillz
+  source:
+    repoURL: https://github.com/Cybe-Asia/digital-school-moodle-gitops.git
+    targetRevision: main
+    path: skillz-prod-routing
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: skillz-prod-routing
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
