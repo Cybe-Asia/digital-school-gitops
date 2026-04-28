@@ -16,6 +16,7 @@ resources:
 - ../../base/auth
 - ../../base/notification
 - ../../base/otp
+- ../../base/sis-services
 - ../../base/frontend
 - ../../base/neo4j
 - ../../base/governance
@@ -24,6 +25,11 @@ resources:
 - app-config.yaml
 - app-secrets-sealed.yaml
 - neo4j-secret-sealed.yaml
+# Separate GHCR pull secret for sis-services. The org-wide
+# ghcr-secret (Fauzi's token) doesnt have access to the sis-services
+# package; arief's token does. kubelet tries each imagePullSecret
+# in order. Same pattern as lab/test + lab/staging.
+- ghcr-secret-sis-sealed.yaml
 - pdbs.yaml
 # MinIO object store for admissions documents.
 # Sealed creds live in prod/blue/minio-secret-sealed.yaml (root) and
@@ -179,6 +185,15 @@ patches:
   target:
     kind: Deployment
     name: admission-service
+# sis-service pull secret patch (see notes on the secret resource above).
+- patch: |-
+    - op: add
+      path: /spec/template/spec/imagePullSecrets/-
+      value:
+        name: ghcr-secret-sis
+  target:
+    kind: Deployment
+    name: sis-service
 
 images:
 # Image tags default to current lab/staging pins. In practice, the
@@ -199,3 +214,6 @@ images:
 - name: ghcr.io/cybe-asia/otp-services
   newName: ghcr.io/cybe-asia/otp-services
   newTag: sha-ad733cd
+- name: ghcr.io/cybe-asia/sis-services
+  newName: ghcr.io/cybe-asia/sis-services
+  newTag: sha-d28ab33

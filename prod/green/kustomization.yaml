@@ -12,6 +12,7 @@ resources:
 - ../../base/auth
 - ../../base/notification
 - ../../base/otp
+- ../../base/sis-services
 - ../../base/frontend
 - ../../base/neo4j
 - ../../base/governance
@@ -20,6 +21,8 @@ resources:
 - app-config.yaml
 - app-secrets-sealed.yaml
 - neo4j-secret-sealed.yaml
+# Separate GHCR pull secret for sis-services. See prod/blue for notes.
+- ghcr-secret-sis-sealed.yaml
 - pdbs.yaml
 # MinIO object store for admissions documents.
 # Sealed creds live in prod/green/minio-secret-sealed.yaml (root) and
@@ -175,6 +178,14 @@ patches:
   target:
     kind: Deployment
     name: admission-service
+- patch: |-
+    - op: add
+      path: /spec/template/spec/imagePullSecrets/-
+      value:
+        name: ghcr-secret-sis
+  target:
+    kind: Deployment
+    name: sis-service
 
 images:
 - name: ghcr.io/cybe-asia/admission-services
@@ -192,3 +203,6 @@ images:
 - name: ghcr.io/cybe-asia/otp-services
   newName: ghcr.io/cybe-asia/otp-services
   newTag: sha-ad733cd
+- name: ghcr.io/cybe-asia/sis-services
+  newName: ghcr.io/cybe-asia/sis-services
+  newTag: sha-d28ab33
