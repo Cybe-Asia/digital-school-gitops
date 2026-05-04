@@ -15,7 +15,7 @@ spec:
             - name: ghcr-secret
           containers:
             - name: moodle-cron
-              image: ghcr.io/cybe-asia/digital-school-moodle:latest
+              image: ghcr.io/cybe-asia/digital-school-moodle:dev
               command:
                 - php
                 - /var/www/html/admin/cli/cron.php

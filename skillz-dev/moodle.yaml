@@ -32,7 +32,7 @@ spec:
         app: moodle
     spec:
       containers:
-      - image: ghcr.io/cybe-asia/digital-school-moodle:latest
+      - image: ghcr.io/cybe-asia/digital-school-moodle:dev
         imagePullPolicy: Always
         name: moodle
         ports:
